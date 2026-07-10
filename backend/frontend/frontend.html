@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaunchBox AI - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-8">
+
+    <div class="max-w-3xl mx-auto">
+        <div class="mb-6 flex items-center justify-between">
+            <h2 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                AI Startup Workspace
+            </h2>
+            <a href="/" class="text-sm text-slate-400 hover:text-white">Back to home</a>
+        </div>
+
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-400 mb-1">Industry</label>
+                <input id="industry" type="text" placeholder="e.g., FinTech, Sustainable Fashion" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-400 mb-1">Core Concept Description</label>
+                <textarea id="description" rows="3" placeholder="Describe what your business does..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500"></textarea>
+            </div>
+            <button onclick="generateStartup()" id="genBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 font-semibold rounded-lg transition-colors">
+                Generate Startup Blueprint ✨
+            </button>
+        </div>
+
+        <div id="resultContainer" class="hidden mt-8 space-y-6">
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                <h3 class="text-lg font-bold text-slate-400 mb-3">Suggested Brand Names</h3>
+                <div id="nameTags" class="flex flex-wrap gap-3"></div>
+            </div>
+
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                <h3 class="text-lg font-bold text-slate-400 mb-2">Automated Strategic Execution Plan</h3>
+                <p id="planText" class="text-slate-300 leading-relaxed text-sm"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function generateStartup() {
+            const industry = document.getElementById('industry').value.trim();
+            const description = document.getElementById('description').value.trim();
+            const btn = document.getElementById('genBtn');
+
+            if (!industry || !description) {
+                alert('Please fill in both fields.');
+                return;
+            }
+
+            btn.innerText = 'Running AI Engines...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/generate-startup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ industry, description })
+                });
+
+                const data = await res.json();
+                btn.innerText = 'Generate Startup Blueprint ✨';
+                btn.disabled = false;
+
+                if (data.success) {
+                    document.getElementById('resultContainer').classList.remove('hidden');
+                    const nameContainer = document.getElementById('nameTags');
+                    nameContainer.innerHTML = '';
+                    data.names.forEach(name => {
+                        nameContainer.innerHTML += `<span class="bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 px-4 py-1.5 rounded-full font-bold text-sm">${name}</span>`;
+                    });
+                    document.getElementById('planText').innerText = data.plan;
+                } else {
+                    alert('AI error: ' + data.message);
+                }
+            } catch (err) {
+                btn.innerText = 'Generate Startup Blueprint ✨';
+                btn.disabled = false;
+                alert('Cannot connect to engine.');
+            }
+        }
+    </script>
+</body>
+</html>
