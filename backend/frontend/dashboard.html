@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LaunchBox AI Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+    <main class="max-w-5xl mx-auto px-4 py-16">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">
+            <p class="text-sm uppercase tracking-[0.3em] text-indigo-400">Prototype Dashboard</p>
+            <h1 class="mt-3 text-3xl font-bold">Welcome to your LaunchBox AI beta dashboard</h1>
+            <p class="mt-3 text-slate-400">This page confirms the payment flow and gives you a place to continue the prototype.</p>
+
+            <div class="mt-8 grid gap-4 md:grid-cols-2">
+                <div class="rounded-xl border border-slate-800 bg-slate-800/70 p-5">
+                    <h2 class="font-semibold">Current Status</h2>
+                    <p class="mt-2 text-slate-300" id="statusText">You are viewing the dashboard.</p>
+                </div>
+                <div class="rounded-xl border border-slate-800 bg-slate-800/70 p-5">
+                    <h2 class="font-semibold">Next Recommended Step</h2>
+                    <p class="mt-2 text-slate-300">Connect a real Razorpay account and replace the mock flow with live credentials.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const status = params.get('status');
+        const el = document.getElementById('statusText');
+        if (status === 'success') {
+            el.textContent = 'Payment completed successfully. The prototype is ready for the next step.';
+        }
+    </script>
+</body>
+</html>

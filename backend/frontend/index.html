@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaunchBox AI Beta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased min-h-screen flex flex-col justify-between">
+
+    <main class="py-16 px-4 max-w-4xl mx-auto w-full">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-extrabold text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text">
+                LaunchBox AI Prototype
+            </h1>
+            <p class="text-slate-400 mt-2 text-sm">Select a tier below to test the payment flow locally.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl mx-auto">
+            <div class="p-6 bg-slate-800 rounded-xl border border-slate-700 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-lg font-bold">Free Idea Tester</h3>
+                    <p class="text-3xl font-black mt-2">₹0</p>
+                </div>
+                <button type="button" onclick="window.location.href='/dashboard.html'" class="mt-6 w-full py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 transition font-medium">
+                    Enter Dashboard
+                </button>
+            </div>
+
+            <div class="p-6 bg-slate-800 rounded-xl border-2 border-indigo-500 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-lg font-bold">Starter Pack</h3>
+                    <p class="text-3xl font-black mt-2 text-indigo-400">₹1,499</p>
+                </div>
+                <button type="button" onclick="payWithRazorpay('Starter', 1499)" class="mt-6 w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition font-medium text-white">
+                    Pay via Razorpay
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function payWithRazorpay(planName, exactAmount) {
+            try {
+                const response = await fetch('/api/create-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan: planName, amount: exactAmount })
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    alert(data.message || 'Order generation failed.');
+                    return;
+                }
+
+                if (data.mock) {
+                    alert(data.message || 'Mock payment flow ready.');
+                    window.location.href = '/dashboard.html?status=success';
+                    return;
+                }
+
+                const options = {
+                    key: data.key_id,
+                    amount: data.amount,
+                    currency: 'INR',
+                    name: 'LaunchBox AI',
+                    description: `${planName} License Unlock`,
+                    order_id: data.order_id,
+                    handler: function (response) {
+                        alert(`Payment Verified! ID: ${response.razorpay_payment_id}`);
+                        window.location.href = '/dashboard.html?status=success';
+                    },
+                    theme: { color: '#4f46e5' }
+                };
+
+                const rzp1 = new Razorpay(options);
+                rzp1.open();
+            } catch (err) {
+                console.error(err);
+                alert('Cannot reach backend server. Ensure the server is running.');
+            }
+        }
+    </script>
+</body>
+</html>
