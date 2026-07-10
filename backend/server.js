@@ -1,4 +1,5 @@
 require('dotenv').config();
+const crypto = require('crypto');
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
@@ -175,54 +176,62 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Live Backend Engine working on port ${PORT}`));
-const crypto = require('crypto');
 
-// Endpoint to verify Razorpay signature securely
 app.post('/api/verify-payment', async (req, res) => {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, plan, industry, description } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, industry, description } = req.body;
 
-    // 1. Generate the expected signature using your local secret
-    const text = razorpay_order_id + "|" + razorpay_payment_id;
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        return res.status(400).json({ success: false, message: 'Missing payment verification fields.' });
+    }
+
+    if (!process.env.RAZORPAY_KEY_SECRET) {
+        return res.status(500).json({ success: false, message: 'Razorpay secret is not configured.' });
+    }
+
+    const text = `${razorpay_order_id}|${razorpay_payment_id}`;
     const generated_signature = crypto
         .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
         .update(text.toString())
         .digest('hex');
 
-    // 2. Comapre signatures cryptographically
-    if (generated_signature === razorpay_signature) {
-        try {
-            // Payment verified! Securely call OpenAI here and process the generation
-            const completion = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: [
-                    { role: "system", content: "You are an elite startup incubator director. Output JSON with keys: 'names' (array of 3 names) and 'plan' (3-sentence strategy)." },
-                    { role: "user", content: `Industry: ${industry}. Description: ${description}.` }
-                ],
-                response_format: { type: "json_object" }
-            });
+    if (generated_signature !== razorpay_signature) {
+        return res.status(400).json({ success: false, message: 'Invalid payment signature. Transaction blocked.' });
+    }
 
-            const aiData = JSON.parse(completion.choices.message.content);
+    if (!openai) {
+        return res.status(500).json({ success: false, message: 'OpenAI is not configured.' });
+    }
 
-            // Save the paid project to MongoDB
-            const finalizedProject = await Project.create({
-                industry,
-                description,
-                generatedNames: aiData.names,
-                businessPlan: aiData.plan,
-                userId: "verified_paid_customer" // Map to user session in future updates
-            });
+    try {
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+                { role: 'system', content: "You are an elite startup incubator director. Output JSON with keys: 'names' (array of 3 names) and 'plan' (3-sentence strategy)." },
+                { role: 'user', content: `Industry: ${industry}. Description: ${description}.` }
+            ],
+            response_format: { type: 'json_object' }
+        });
 
-            return res.json({ 
-                success: true, 
-                message: "Payment verified and project built!",
-                data: finalizedProject 
-            });
+        const aiData = JSON.parse(completion.choices[0].message.content || '{}');
+        const names = Array.isArray(aiData.names) && aiData.names.length > 0 ? aiData.names.slice(0, 3) : [];
+        const plan = typeof aiData.plan === 'string' && aiData.plan.trim() ? aiData.plan : '';
 
-        } catch (aiError) {
-            return res.status(500).json({ success: false, message: "Payment verified but AI failed." });
-        }
-    } else {
-        return res.status(400).json({ success: false, message: "Invalid payment signature. Transaction blocked." });
+        const finalizedProject = await Project.create({
+            industry,
+            description,
+            generatedNames: names,
+            businessPlan: plan,
+            userId: 'verified_paid_customer'
+        });
+
+        return res.json({
+            success: true,
+            message: 'Payment verified and project built!',
+            data: finalizedProject
+        });
+    } catch (aiError) {
+        return res.status(500).json({ success: false, message: 'Payment verified but AI failed.' });
     }
 });
+
+app.listen(PORT, () => console.log(`🚀 Live Backend Engine working on port ${PORT}`));
